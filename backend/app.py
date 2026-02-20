@@ -1,129 +1,134 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pickle
-import numpy as np
+import pandas as pd
 
 app = Flask(__name__)
-CORS(app)  # Allow requests from all origins
+CORS(app)
 
-# Load trained model & encoder
-model = pickle.load(open("model.pkl", "rb"))
-le = pickle.load(open("label_encoder.pkl", "rb"))
-
-FEATURES = [
-    "Work_Hours_Per_Week",
-    "Social_Media_Hours_Day",
-    "Work_Stress_Level",
-    "Sleep_Hours_Night",
-    "Screen_Time_Hours_Day",
-    "Loneliness",
-    "Social_Support",
-]
+model = pickle.load(open("regression_model.pkl", "rb"))
+meta = pickle.load(open("regression_meta.pkl", "rb"))
+MODEL_FEATURES = meta["features"]
+FEATURE_COLUMNS = meta["feature_columns"]
 
 FEATURE_RANGES = {
-    "Work_Hours_Per_Week": (0, 80),
-    "Social_Media_Hours_Day": (0, 12),
-    "Work_Stress_Level": (0, 5),
-    "Sleep_Hours_Night": (0, 10),
-    "Screen_Time_Hours_Day": (0, 12),
-    "Loneliness": (0, 5),
-    "Social_Support": (0, 5),
+    "sleep_hours": (0, 12),
+    "screen_time": (0, 13),
+    "exercise_minutes": (0, 150),
+    "daily_pending_tasks": (0, 10),
+    "interruptions": (0, 15),
+    "fatigue_level": (0, 10),
+    "social_hours": (0, 6),
+    "coffee_cups": (0, 6),
+    "mood_score": (0, 10),
 }
+POSITIVE_FEATURES = {"sleep_hours", "exercise_minutes", "social_hours", "mood_score"}
+DIET_RISK = {"poor": 80, "average": 45, "good": 20}
+WEATHER_RISK = {"sunny": 20, "cloudy": 40, "rainy": 55, "snowy": 60}
 
-POSITIVE_FEATURES = {"Sleep_Hours_Night", "Social_Support"}
 
-
-def _to_float(data, *keys):
-    for key in keys:
-        if key in data and data[key] is not None:
-            return float(data[key])
-    return 0.0
+def _to_float(data, key, default=0.0):
+    value = data.get(key, default)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float(default)
 
 
 def _scaled(value, min_val, max_val, invert=False):
     if max_val <= min_val:
         return 0
-    clamped = max(min_val, min(max_val, value))
+    clamped = max(min_val, min(max_val, float(value)))
     scaled = ((clamped - min_val) / (max_val - min_val)) * 100.0
     if invert:
         scaled = 100.0 - scaled
     return int(round(scaled))
 
+
+def _risk_band(score):
+    if score <= 30:
+        return "Low"
+    if score <= 55:
+        return "Moderate"
+    if score <= 75:
+        return "Elevated"
+    return "High"
+
+
 @app.route("/predict", methods=["POST"])
 def predict():
     data = request.get_json(silent=True) or {}
-    print("Received JSON:", data)
 
-    # Accepts either raw quiz keys or already mapped feature keys
-    mapped_data = {
-        "Work_Hours_Per_Week": _to_float(data, "workHours", "Work_Hours_Per_Week"),
-        "Social_Media_Hours_Day": _to_float(data, "screen", "Social_Media_Hours_Day"),
-        "Work_Stress_Level": _to_float(data, "stress", "Work_Stress_Level"),
-        "Sleep_Hours_Night": _to_float(data, "sleep", "Sleep_Hours_Night"),
-        "Screen_Time_Hours_Day": _to_float(data, "screen", "Screen_Time_Hours_Day"),
-        "Loneliness": _to_float(data, "loneliness", "Loneliness"),
-        "Social_Support": _to_float(data, "socialSupport", "Social_Support"),
+    # Build feature row aligned to synthetic dataset schema.
+    inputs = {
+        "sleep_hours": _to_float(data, "sleep_hours", 7.0),
+        "screen_time": _to_float(data, "screen_time", 4.0),
+        "exercise_minutes": _to_float(data, "exercise_minutes", 20.0),
+        "daily_pending_tasks": _to_float(data, "daily_pending_tasks", 3.0),
+        "interruptions": _to_float(data, "interruptions", 5.0),
+        "fatigue_level": _to_float(data, "fatigue_level", 5.0),
+        "social_hours": _to_float(data, "social_hours", 2.0),
+        "coffee_cups": _to_float(data, "coffee_cups", 1.0),
+        "diet_quality": str(data.get("diet_quality", "average")).strip().lower(),
+        "weather": str(data.get("weather", "cloudy")).strip().lower(),
+        "mood_score": _to_float(data, "mood_score", 5.0),
     }
-
-    # Convert to NumPy array
-    features = np.array([[mapped_data[name] for name in FEATURES]])
+    if inputs["diet_quality"] not in DIET_RISK:
+        inputs["diet_quality"] = "average"
+    if inputs["weather"] not in WEATHER_RISK:
+        inputs["weather"] = "cloudy"
 
     try:
-        # Predict
-        prediction = model.predict(features)
+        row = pd.DataFrame([inputs], columns=MODEL_FEATURES)
+        encoded = pd.get_dummies(row, columns=meta["categorical"], dtype=float)
+        encoded = encoded.reindex(columns=FEATURE_COLUMNS, fill_value=0.0)
 
-        # Convert NumPy int to Python int
-        prediction_int = int(np.asscalar(prediction)) if hasattr(np, 'asscalar') else int(prediction[0])
-
-        # Decode label and ensure it's a Python str
-        mental_state = str(le.inverse_transform([prediction_int])[0])
-
-        # Generalized messages
-        messages = {
-            "Calm": "You are in a balanced state. Keep it up! 🌟",
-            "Stressed": "You seem stressed. Take a short break or deep breath. 🧘‍♂️",
-            "Angry": "High emotional activation detected. Avoid important decisions now. ⚠️",
-            "Impulsive": "Your responses show impulsivity. Pause before acting. ⏸️"
-        }
-
-        risk_by_state = {"Calm": 20, "Stressed": 72, "Angry": 86, "Impulsive": 78}
-        base_risk = risk_by_state.get(mental_state, 50)
+        predicted_stress = float(model.predict(encoded)[0])
+        predicted_stress = max(0.0, min(10.0, predicted_stress))
+        model_risk = predicted_stress * 10.0
 
         feature_scores = {}
-        for feature_name in FEATURES:
+        for feature_name in FEATURE_RANGES:
             min_val, max_val = FEATURE_RANGES[feature_name]
             feature_scores[feature_name] = _scaled(
-                mapped_data[feature_name],
+                inputs[feature_name],
                 min_val,
                 max_val,
                 invert=(feature_name in POSITIVE_FEATURES),
             )
+        feature_scores["diet_quality"] = DIET_RISK[inputs["diet_quality"]]
+        feature_scores["weather"] = WEATHER_RISK[inputs["weather"]]
+        feature_risk = sum(feature_scores.values()) / len(feature_scores)
 
-        risk_score = int(round(sum(feature_scores.values()) / len(feature_scores)))
-        risk_score = int(round((risk_score + base_risk) / 2))
+        risk_score = int(round(max(0, min(100, (0.7 * model_risk) + (0.3 * feature_risk)))))
+        band = _risk_band(risk_score)
+        message = (
+            f"Predicted stress level is {predicted_stress:.1f}/10. "
+            f"Current risk band: {band}."
+        )
 
-        if hasattr(model, "predict_proba"):
-            probabilities = model.predict_proba(features)[0]
-            class_labels = le.inverse_transform(np.arange(len(probabilities)))
-            proba_by_state = {
-                str(class_labels[idx]): float(probabilities[idx])
-                for idx in range(len(probabilities))
-            }
-        else:
-            proba_by_state = {}
+        extra_guidance = []
+        if inputs["sleep_hours"] < 6:
+            extra_guidance.append("Low sleep detected: prioritize a recovery sleep window.")
+        if inputs["exercise_minutes"] < 10:
+            extra_guidance.append("Very low movement today: a short walk can reduce stress load.")
+        if inputs["social_hours"] < 1:
+            extra_guidance.append("Low social time: one check-in can improve emotional buffering.")
 
         return jsonify({
-            "state": mental_state,
-            "message": messages.get(mental_state, "Be mindful of your mental state."),
+            "state": f"{band} Stress Outlook",
             "risk_score": risk_score,
-            "inputs": mapped_data,
+            "predicted_stress_level": round(predicted_stress, 2),
+            "model_risk_component": round(model_risk, 2),
+            "feature_risk_component": round(feature_risk, 2),
+            "inputs": inputs,
             "feature_scores": feature_scores,
-            "state_probabilities": proba_by_state,
+            "message": message,
+            "extra_guidance": extra_guidance,
         })
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
-    except Exception as e:
-        # Return error info for debugging
-        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)

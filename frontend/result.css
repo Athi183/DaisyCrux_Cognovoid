@@ -99,6 +99,39 @@ body {
     font-size: 0.95rem;
 }
 
+.panel-wide {
+    grid-column: 1 / -1;
+}
+
+.curve-wrap {
+    height: 280px;
+}
+
+.advice-title {
+    color: #ffd48c;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.advice-copy {
+    margin-bottom: 8px;
+}
+
+.advice-readiness {
+    margin-top: 8px;
+    color: #9ff8cf;
+}
+
+.advice-model {
+    margin-top: 8px;
+    color: #c8d7ff;
+    font-size: 0.9rem;
+}
+
+.advice-list {
+    margin: 8px 0 0 18px;
+}
+
 .emoji {
     margin-left: 6px;
     font-size: 1.2rem;
@@ -112,6 +145,10 @@ body {
     .energy-wrap,
     .radar-wrap {
         height: 420px;
+    }
+
+    .curve-wrap {
+        height: 240px;
     }
 }
 
@@ -128,6 +165,10 @@ body {
     .energy-wrap,
     .radar-wrap {
         height: 320px;
+    }
+
+    .curve-wrap {
+        height: 220px;
     }
 
     .state-pill {

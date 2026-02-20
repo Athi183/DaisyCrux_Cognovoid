@@ -2,10 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Cognovoid - Mental Battery</title>
+    <title>Cognovoid - Stress Regression Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="result.css">
 </head>
@@ -13,40 +12,56 @@
     <div class="result-page">
         <header class="result-header">
             <h1 class="result-title">COGNOVOID DASHBOARD</h1>
-            <p id="stateTitle" class="state-pill">Predicted State: Loading...</p>
+            <p id="stateTitle" class="state-pill">Stress Signal: Loading...</p>
         </header>
 
         <section class="charts-grid">
             <article class="panel">
-                <h2>Your Cognitive Stability Today</h2>
+                <h2>Mental Stability vs Risk Level</h2>
                 <div class="chart-wrap energy-wrap">
                     <canvas id="energyChart"></canvas>
                 </div>
             </article>
 
             <article class="panel">
-                <h2>Risk Drivers</h2>
+                <h2>Risk Driver Graph</h2>
                 <div class="chart-wrap radar-wrap">
                     <canvas id="moodChart"></canvas>
+                </div>
+            </article>
+
+            <article class="panel panel-wide">
+                <h2>Energy Curve (Next 6 Hours)</h2>
+                <div class="chart-wrap curve-wrap">
+                    <canvas id="curveChart"></canvas>
                 </div>
             </article>
         </section>
 
         <section class="panel advice-panel">
-            <h2>Recommendation</h2>
+            <h2>Generalized Interpretation</h2>
             <div id="adviceBox">Loading advice...</div>
         </section>
     </div>
 
     <script>
         const fallbackData = {
-            sleep: 3,
-            stress: 4,
-            screen: 5,
-            workHours: 40,
-            loneliness: 2,
-            socialSupport: 3
+            sleep_hours: 7,
+            screen_time: 5,
+            exercise_minutes: 20,
+            daily_pending_tasks: 3,
+            interruptions: 5,
+            fatigue_level: 5,
+            social_hours: 2,
+            coffee_cups: 1,
+            diet_quality: "average",
+            weather: "cloudy",
+            mood_score: 5
         };
+
+        let energyChartInstance = null;
+        let detailsChartInstance = null;
+        let curveChartInstance = null;
 
         function loadQuizData() {
             const raw = localStorage.getItem("cognovoidQuizData");
@@ -59,9 +74,6 @@
             }
         }
 
-        let energyChartInstance = null;
-        let detailsChartInstance = null;
-
         function fetchPrediction() {
             const userData = loadQuizData();
             return fetch("http://localhost:5000/predict", {
@@ -72,86 +84,89 @@
             .then(res => res.json())
             .then(data => {
                 if (data.error) throw new Error(data.error);
-
                 createEnergyGraph(data.risk_score);
                 createDetailsGraph(data.feature_scores || {});
-                displayState(data.state);
-                displayAdvice(data.message, data.risk_score);
+                createEnergyCurveGraph(data.risk_score);
+                displayState(data.state, data.risk_score, data.predicted_stress_level);
+                displayAdvice(data.message, data.risk_score, data.inputs || {}, data.extra_guidance || []);
             })
             .catch(err => {
                 console.error("Error fetching prediction:", err);
                 createEnergyGraph(50);
                 createDetailsGraph({});
-                displayState("Unavailable");
-                displayAdvice("Unable to fetch advice. Stay mindful!", 50);
+                createEnergyCurveGraph(50);
+                displayState("Unavailable", 50, null);
+                displayAdvice("Unable to fetch advice. Stay mindful!", 50, {}, []);
             });
         }
 
-        function createEnergyGraph(risk_score) {
-            const ctx = document.getElementById('energyChart').getContext('2d');
-            const safeRisk = Math.max(0, Math.min(100, Number(risk_score || 0)));
+        function createEnergyGraph(riskScore) {
+            const ctx = document.getElementById("energyChart").getContext("2d");
+            const safeRisk = Math.max(0, Math.min(100, Number(riskScore || 0)));
             const energy = 100 - safeRisk;
 
             if (energyChartInstance) energyChartInstance.destroy();
             energyChartInstance = new Chart(ctx, {
-                type: 'doughnut',
+                type: "doughnut",
                 data: {
-                    labels: ['Cognitive Stability', 'Risk'],
+                    labels: ["Cognitive Stability", "Risk"],
                     datasets: [{
                         data: [energy, safeRisk],
-                        backgroundColor: ['#22c55e', '#ef4444'],
+                        backgroundColor: ["#22c55e", "#ef4444"],
                         borderWidth: 2
                     }]
                 },
                 options: {
-                    cutout: '70%',
+                    cutout: "70%",
                     maintainAspectRatio: false,
-                    animation: { animateRotate: true },
                     plugins: {
-                        legend: {
-                            display: true,
-                            labels: { color: '#d6e3ff' }
-                        },
-                        tooltip: { enabled: true }
+                        legend: { labels: { color: "#d6e3ff" } }
                     }
                 }
             });
         }
 
         function createDetailsGraph(featureScores) {
-            const ctx = document.getElementById('moodChart').getContext('2d');
+            const ctx = document.getElementById("moodChart").getContext("2d");
             const labels = [
-                'Work Hours',
-                'Social Media',
-                'Stress',
-                'Sleep Deficit',
-                'Screen Time',
-                'Loneliness',
-                'Low Support'
+                "Sleep Deficit",
+                "Screen Load",
+                "Low Exercise",
+                "Task Pressure",
+                "Interruptions",
+                "Fatigue",
+                "Low Social",
+                "Coffee Load",
+                "Diet Quality",
+                "Weather Load",
+                "Mood Deficit"
             ];
             const values = [
-                featureScores.Work_Hours_Per_Week ?? 0,
-                featureScores.Social_Media_Hours_Day ?? 0,
-                featureScores.Work_Stress_Level ?? 0,
-                featureScores.Sleep_Hours_Night ?? 0,
-                featureScores.Screen_Time_Hours_Day ?? 0,
-                featureScores.Loneliness ?? 0,
-                featureScores.Social_Support ?? 0
+                featureScores.sleep_hours ?? 0,
+                featureScores.screen_time ?? 0,
+                featureScores.exercise_minutes ?? 0,
+                featureScores.daily_pending_tasks ?? 0,
+                featureScores.interruptions ?? 0,
+                featureScores.fatigue_level ?? 0,
+                featureScores.social_hours ?? 0,
+                featureScores.coffee_cups ?? 0,
+                featureScores.diet_quality ?? 0,
+                featureScores.weather ?? 0,
+                featureScores.mood_score ?? 0
             ];
 
             if (detailsChartInstance) detailsChartInstance.destroy();
             detailsChartInstance = new Chart(ctx, {
-                type: 'radar',
+                type: "radar",
                 data: {
                     labels,
                     datasets: [{
-                        label: 'Risk Contribution (0-100)',
+                        label: "Risk Contribution (0-100)",
                         data: values,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59,130,246,0.25)',
+                        borderColor: "#3b82f6",
+                        backgroundColor: "rgba(59,130,246,0.25)",
                         fill: true,
-                        pointRadius: 3,
-                        pointHoverRadius: 5
+                        pointRadius: 3
                     }]
                 },
                 options: {
@@ -160,50 +175,91 @@
                         r: {
                             min: 0,
                             max: 100,
-                            angleLines: { color: 'rgba(59,130,246,0.18)' },
-                            grid: { color: 'rgba(59,130,246,0.18)' },
-                            pointLabels: { color: '#d6e3ff' },
-                            ticks: {
-                                color: '#d6e3ff',
-                                backdropColor: 'rgba(6,15,56,0.8)'
-                            }
+                            angleLines: { color: "rgba(59,130,246,0.18)" },
+                            grid: { color: "rgba(59,130,246,0.18)" },
+                            pointLabels: { color: "#d6e3ff" },
+                            ticks: { color: "#d6e3ff", backdropColor: "rgba(6,15,56,0.8)" }
                         }
                     },
                     plugins: {
-                        legend: { labels: { color: '#d6e3ff' } }
+                        legend: { labels: { color: "#d6e3ff" } }
                     }
                 }
             });
         }
 
-        function normalizeState(state) {
-            const map = {
-                0: "Calm",
-                1: "Stressed",
-                2: "Angry",
-                3: "Impulsive"
-            };
+        function createEnergyCurveGraph(riskScore) {
+            const ctx = document.getElementById("curveChart").getContext("2d");
+            const safeRisk = Math.max(0, Math.min(100, Number(riskScore || 0)));
+            const baseEnergy = 100 - safeRisk;
+            const labels = ["Now", "+1h", "+2h", "+3h", "+4h", "+5h", "+6h"];
+            const values = labels.map((_, index) => {
+                const initialDip = index === 1 ? Math.min(12, safeRisk * 0.15) : 0;
+                const recoveryRate = safeRisk > 70 ? 4 : safeRisk > 45 ? 6 : 3;
+                return Math.max(5, Math.min(95, Math.round(baseEnergy - initialDip + index * recoveryRate)));
+            });
 
-            if (state === null || state === undefined) return "Unknown";
-            if (typeof state === "number") return map[state] || String(state);
-
-            const asText = String(state).trim();
-            if (/^\d+$/.test(asText)) return map[Number(asText)] || asText;
-            return asText;
+            if (curveChartInstance) curveChartInstance.destroy();
+            curveChartInstance = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels,
+                    datasets: [{
+                        label: "Estimated Cognitive Energy",
+                        data: values,
+                        borderColor: "#22c55e",
+                        backgroundColor: "rgba(34,197,94,0.18)",
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 3
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { min: 0, max: 100, grid: { color: "rgba(59,130,246,0.2)" }, ticks: { color: "#d6e3ff" } },
+                        x: { grid: { color: "rgba(59,130,246,0.14)" }, ticks: { color: "#d6e3ff" } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: "#d6e3ff" } }
+                    }
+                }
+            });
         }
 
-        function displayState(state) {
-            const readableState = normalizeState(state);
-            document.getElementById('stateTitle').innerText = `Predicted State: ${readableState}`;
+        function displayState(state, risk, predictedStress) {
+            const stressText = predictedStress === null || predictedStress === undefined
+                ? "N/A"
+                : `${Number(predictedStress).toFixed(1)}/10`;
+            document.getElementById("stateTitle").innerText =
+                `Stress Signal: ${state} | Predicted Stress ${stressText} | Risk ${Math.round(Number(risk || 0))}%`;
         }
 
-        function displayAdvice(advice, risk) {
-            const box = document.getElementById('adviceBox');
+        function displayAdvice(message, risk, inputs, extraGuidance) {
+            const guidance = [...extraGuidance];
+            if ((inputs.sleep_hours ?? 0) < 6) {
+                guidance.push("Sleep is low. Recovery sleep can significantly reduce risk.");
+            }
+            if ((inputs.exercise_minutes ?? 0) < 10) {
+                guidance.push("Low movement today. Even 10-15 minutes of walking can help.");
+            }
+            if ((inputs.social_hours ?? 0) < 1) {
+                guidance.push("Low social interaction can prolong stress signal.");
+            }
+            const guidanceHtml = guidance.length
+                ? `<ul class="advice-list">${guidance.map(item => `<li>${item}</li>`).join("")}</ul>`
+                : `<p class="advice-copy">No major additional risk flags detected from the inputs.</p>`;
+
             let emoji = "😐";
             if (risk < 30) emoji = "😃";
             else if (risk > 70) emoji = "😞";
 
-            box.innerHTML = `${advice} <span class="emoji">${emoji}</span>`;
+            document.getElementById("adviceBox").innerHTML = `
+                <p class="advice-title">⚠️ Stress-regression estimate generated</p>
+                <p class="advice-copy">${message}</p>
+                ${guidanceHtml}
+                <p class="advice-model">Use this as decision support, not diagnosis. <span class="emoji">${emoji}</span></p>
+            `;
         }
 
         fetchPrediction();

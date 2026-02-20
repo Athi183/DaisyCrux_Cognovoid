@@ -3,22 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <title>Level 2 - Mental State Quiz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="quiz.css">
 </head>
 <body>
 
 <div class="quiz-container">
-  <h2 id="question">Question will appear here</h2>
+  <h1>COGNOVOID QUIZ</h1>
+  <p id="progress">Question 1</p>
 
-  <div class="options">
-    <button onclick="selectAnswer(1)">1</button>
-    <button onclick="selectAnswer(2)">2</button>
-    <button onclick="selectAnswer(3)">3</button>
-    <button onclick="selectAnswer(4)">4</button>
-    <button onclick="selectAnswer(5)">5</button>
+  <h2 id="question">Question will appear here</h2>
+  <p id="phase"></p>
+  <p id="hint"></p>
+
+  <div class="input-wrap">
+    <input id="answerInput" type="range" min="0" max="5" step="1" value="0" oninput="updateValue(this.value)">
+    <select id="answerSelect" onchange="updateSelectValue(this.value)" hidden></select>
+    <div class="range-info">
+      <span id="minLabel">0</span>
+      <span id="maxLabel">5</span>
+    </div>
+    <p class="value-line">
+      Selected:
+      <span id="answerValue">0</span>
+      <span id="unitLabel"></span>
+    </p>
   </div>
 
-  <p id="progress">Question 1</p>
+  <div class="actions">
+    <button class="btn secondary" id="backBtn" onclick="previousQuestion()">Back</button>
+    <button class="btn primary" onclick="nextQuestion()">Next</button>
+  </div>
 </div>
 
 <script src="quiz.js"></script>
