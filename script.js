@@ -1,3 +1,4 @@
+
 function sendMessage() {
 
     const mood = document.getElementById("mood").value;
@@ -39,4 +40,6 @@ function sendMessage() {
         botMsg.innerText = "Server error. Check backend.";
         console.error(error);
     });
-}
+function startQuiz() {
+    window.location.href = "quiz.html";
+}};

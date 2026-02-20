@@ -1,3 +1,57 @@
 
+
 .env
 backend/venv/
+=======
+# =========================
+# Python files & cache
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# =========================
+# Virtual environment
+# =========================
+venv/
+env/
+.venv/
+
+# =========================
+# Jupyter Notebooks
+# =========================
+.ipynb_checkpoints/
+*.ipynb   # remove if you want to keep notebooks in repo
+
+# =========================
+# Dataset / large files
+# =========================
+# Add this only if you don't want to push the dataset
+# dataset/
+*.csv
+*.xls
+*.xlsx
+
+# =========================
+# Model & encoder files
+# =========================
+# Keep model.pkl & label_encoder.pkl if you want to push
+# Otherwise add here to ignore
+# model.pkl
+# label_encoder.pkl
+
+# =========================
+# Temporary / miscellaneous
+# =========================
+allfiles.txt
+*.tmp
+*.bak
+
+# =========================
+# IDE & system files
+# =========================
+.vscode/
+*.swp
+.DS_Store
