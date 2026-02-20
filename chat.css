@@ -1,0 +1,78 @@
+body {
+    background: #0f172a;
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+}
+
+.container {
+    width: 600px;
+    margin-top: 40px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #94a3b8;
+    margin-bottom: 20px;
+}
+
+.chat-box {
+    height: 350px;
+    overflow-y: auto;
+    background: #1e293b;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.message {
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    max-width: 80%;
+}
+
+.user {
+    background: #22c55e;
+    color: black;
+    margin-left: auto;
+}
+
+.bot {
+    background: #3b82f6;
+}
+
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+textarea, select {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+}
+
+textarea {
+    min-height: 80px;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #22c55e;
+    font-weight: bold;
+    cursor: pointer;
+}
+#messageInput {
+    width: 100%;
+    width: 580px;      /* increase width */
+    height: 100px;     /* increase height */
+    padding: 10px;
+    border-radius: 12px;
+    resize: none;      /* optional: disables manual resize */
+}

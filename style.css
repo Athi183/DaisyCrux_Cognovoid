@@ -1,0 +1,199 @@
+:root {
+    --bg: #060f38;
+    --neon: #22c55e;
+    --blue: #3bf6c7;
+    --warning: #eefa15;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Orbitron', sans-serif;
+}
+
+body {
+    background: var(--bg);
+    height: 100vh;
+    color: white;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Top HUD */
+.hud-top {
+    position: absolute;
+    top: 20px;
+    width: 90%;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    color: var(--neon);
+}
+
+.pulse {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { opacity: 0.4; }
+}
+
+
+/* Main Container */
+.container {
+    text-align: center;
+    max-width: 800px;
+}
+
+/* BIG TITLE */
+.logo {
+    font-size: 5rem;
+    font-weight: 900;
+    color: var(--neon);
+    text-shadow: 0 0 20px var(--neon);
+}
+/* Glitch Effect */
+.glitch {
+    position: relative;
+    color: #22c55e; /* main neon green */
+    font-size: 5rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -2px;
+}
+
+.glitch::before,
+.glitch::after {
+    content: "COGNOVOID";
+    position: absolute;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
+.glitch::before {
+    animation: glitchTop 2s infinite linear alternate-reverse;
+    color: #3b82f6; /* secondary color */
+    clip: rect(0, 900px, 45%, 0);
+}
+
+.glitch::after {
+    animation: glitchBottom 2s infinite linear alternate-reverse;
+    color: #facc15; /* warning/yellow accent */
+    clip: rect(55%, 900px, 100%, 0);
+}
+
+/* Keyframes for glitch flicker */
+@keyframes glitchTop {
+    0% { transform: translate(-2px, -2px); }
+    20% { transform: translate(2px, 2px); }
+    40% { transform: translate(-1px, 1px); }
+    60% { transform: translate(1px, -1px); }
+    80% { transform: translate(-2px, 2px); }
+    100% { transform: translate(0, 0); }
+}
+
+@keyframes glitchBottom {
+    0% { transform: translate(2px, 2px); }
+    20% { transform: translate(-2px, -2px); }
+    40% { transform: translate(1px, -1px); }
+    60% { transform: translate(-1px, 1px); }
+    80% { transform: translate(2px, -2px); }
+    100% { transform: translate(0, 0); }
+}
+
+/* Glitch Effect */
+.glitch {
+    position: relative;
+}
+
+.glitch::before,
+.glitch::after {
+    content: "COGNOVOID";
+    position: absolute;
+    left: 0;
+    width: 100%;
+    color: var(--blue);
+    overflow: hidden;
+    clip: rect(0, 900px, 0, 0);
+}
+
+.glitch::before {
+    animation: glitchTop 2s infinite linear alternate-reverse;
+}
+
+.glitch::after {
+    animation: glitchBottom 2s infinite linear alternate-reverse;
+}
+
+@keyframes glitchTop {
+    0% { clip: rect(0, 9999px, 0, 0); }
+    50% { clip: rect(0, 9999px, 20px, 0); }
+    100% { clip: rect(0, 9999px, 0, 0); }
+}
+
+@keyframes glitchBottom {
+    0% { clip: rect(80px, 9999px, 100px, 0); }
+    50% { clip: rect(60px, 9999px, 100px, 0); }
+    100% { clip: rect(80px, 9999px, 100px, 0); }
+}
+
+.subtitle {
+    margin-top: 20px;
+    font-size: 1.5rem;
+    color: var(--warning);
+}
+
+/* Energy Bar */
+.energy-bar {
+    margin: 40px auto;
+    width: 70%;
+    height: 15px;
+    border: 2px solid var(--neon);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.energy-fill {
+    width: 70%;
+    height: 100%;
+    background: var(--neon);
+    animation: energyPulse 2s infinite alternate;
+}
+
+@keyframes energyPulse {
+    0% { width: 60%; }
+    100% { width: 80%; }
+}
+
+/* Button */
+.btn {
+    margin-top: 40px;
+    padding: 18px 60px;
+    font-size: 1.2rem;
+    border: 2px solid var(--blue);
+    background: transparent;
+    color: var(--blue);
+    cursor: pointer;
+    transition: 0.3s;
+    letter-spacing: 2px;
+}
+
+.btn:hover {
+    background: var(--blue);
+    color: rgba(0, 0, 0, 0.981);
+    box-shadow: 0 0 25px var(--blue);
+    transform: scale(1.1);
+}
+
+.hint {
+    margin-top: 20px;
+    font-size: 0.9rem;
+    color: var(--warning);
+}
