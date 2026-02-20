@@ -1,5 +1,16 @@
-backend/venv/
+# Python cache
 __pycache__/
 *.pyc
+
+# Jupyter checkpoints
 .ipynb_checkpoints/
-.env
+
+# Virtual environment
+venv/
+
+# Logs
+*.log
+
+# Temporary files
+allfiles.txt
+*.tmp
