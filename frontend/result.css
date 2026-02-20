@@ -1,0 +1,137 @@
+:root {
+    --bg: #060f38;
+    --neon: #22c55e;
+    --blue: #3bf6c7;
+    --warning: #eefa15;
+    --text: #d6e3ff;
+    --panel: rgba(13, 25, 72, 0.78);
+    --border: rgba(59, 130, 246, 0.35);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Orbitron', sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    color: var(--text);
+    background:
+        radial-gradient(circle at 12% 10%, rgba(34, 197, 94, 0.16), transparent 38%),
+        radial-gradient(circle at 88% 14%, rgba(59, 130, 246, 0.22), transparent 34%),
+        linear-gradient(135deg, #030a2a 0%, var(--bg) 45%, #081750 100%);
+    padding: 24px;
+}
+
+.result-page {
+    max-width: 1300px;
+    margin: 0 auto;
+    display: grid;
+    gap: 20px;
+}
+
+.result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.result-title {
+    color: var(--neon);
+    letter-spacing: 2px;
+    text-shadow: 0 0 16px rgba(34, 197, 94, 0.48);
+    font-size: clamp(1.2rem, 3vw, 2rem);
+}
+
+.state-pill {
+    border: 1px solid rgba(34, 197, 94, 0.45);
+    background: rgba(34, 197, 94, 0.13);
+    color: #eafff3;
+    padding: 10px 14px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+    gap: 20px;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(4px);
+    padding: 18px;
+}
+
+.panel h2 {
+    color: var(--warning);
+    margin-bottom: 14px;
+    font-size: 1rem;
+}
+
+.chart-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.energy-wrap {
+    height: min(50vw, 470px);
+}
+
+.radar-wrap {
+    height: min(50vw, 470px);
+}
+
+.advice-panel {
+    min-height: 120px;
+}
+
+#adviceBox {
+    line-height: 1.65;
+    font-size: 0.95rem;
+}
+
+.emoji {
+    margin-left: 6px;
+    font-size: 1.2rem;
+}
+
+@media (max-width: 1024px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .energy-wrap,
+    .radar-wrap {
+        height: 420px;
+    }
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 14px;
+    }
+
+    .panel {
+        padding: 14px;
+        border-radius: 14px;
+    }
+
+    .energy-wrap,
+    .radar-wrap {
+        height: 320px;
+    }
+
+    .state-pill {
+        width: 100%;
+        text-align: center;
+    }
+}

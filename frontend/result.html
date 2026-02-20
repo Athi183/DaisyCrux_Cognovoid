@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cognovoid - Mental Battery</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="result.css">
+</head>
+<body>
+    <div class="result-page">
+        <header class="result-header">
+            <h1 class="result-title">COGNOVOID DASHBOARD</h1>
+            <p id="stateTitle" class="state-pill">Predicted State: Loading...</p>
+        </header>
+
+        <section class="charts-grid">
+            <article class="panel">
+                <h2>Your Cognitive Stability Today</h2>
+                <div class="chart-wrap energy-wrap">
+                    <canvas id="energyChart"></canvas>
+                </div>
+            </article>
+
+            <article class="panel">
+                <h2>Risk Drivers</h2>
+                <div class="chart-wrap radar-wrap">
+                    <canvas id="moodChart"></canvas>
+                </div>
+            </article>
+        </section>
+
+        <section class="panel advice-panel">
+            <h2>Recommendation</h2>
+            <div id="adviceBox">Loading advice...</div>
+        </section>
+    </div>
+
+    <script>
+        const fallbackData = {
+            sleep: 3,
+            stress: 4,
+            screen: 5,
+            workHours: 40,
+            loneliness: 2,
+            socialSupport: 3
+        };
+
+        function loadQuizData() {
+            const raw = localStorage.getItem("cognovoidQuizData");
+            if (!raw) return fallbackData;
+            try {
+                return { ...fallbackData, ...JSON.parse(raw) };
+            } catch (e) {
+                console.error("Invalid quiz data in storage:", e);
+                return fallbackData;
+            }
+        }
+
+        let energyChartInstance = null;
+        let detailsChartInstance = null;
+
+        function fetchPrediction() {
+            const userData = loadQuizData();
+            return fetch("http://localhost:5000/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(userData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) throw new Error(data.error);
+
+                createEnergyGraph(data.risk_score);
+                createDetailsGraph(data.feature_scores || {});
+                displayState(data.state);
+                displayAdvice(data.message, data.risk_score);
+            })
+            .catch(err => {
+                console.error("Error fetching prediction:", err);
+                createEnergyGraph(50);
+                createDetailsGraph({});
+                displayState("Unavailable");
+                displayAdvice("Unable to fetch advice. Stay mindful!", 50);
+            });
+        }
+
+        function createEnergyGraph(risk_score) {
+            const ctx = document.getElementById('energyChart').getContext('2d');
+            const safeRisk = Math.max(0, Math.min(100, Number(risk_score || 0)));
+            const energy = 100 - safeRisk;
+
+            if (energyChartInstance) energyChartInstance.destroy();
+            energyChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Cognitive Stability', 'Risk'],
+                    datasets: [{
+                        data: [energy, safeRisk],
+                        backgroundColor: ['#22c55e', '#ef4444'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    cutout: '70%',
+                    maintainAspectRatio: false,
+                    animation: { animateRotate: true },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: { color: '#d6e3ff' }
+                        },
+                        tooltip: { enabled: true }
+                    }
+                }
+            });
+        }
+
+        function createDetailsGraph(featureScores) {
+            const ctx = document.getElementById('moodChart').getContext('2d');
+            const labels = [
+                'Work Hours',
+                'Social Media',
+                'Stress',
+                'Sleep Deficit',
+                'Screen Time',
+                'Loneliness',
+                'Low Support'
+            ];
+            const values = [
+                featureScores.Work_Hours_Per_Week ?? 0,
+                featureScores.Social_Media_Hours_Day ?? 0,
+                featureScores.Work_Stress_Level ?? 0,
+                featureScores.Sleep_Hours_Night ?? 0,
+                featureScores.Screen_Time_Hours_Day ?? 0,
+                featureScores.Loneliness ?? 0,
+                featureScores.Social_Support ?? 0
+            ];
+
+            if (detailsChartInstance) detailsChartInstance.destroy();
+            detailsChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Risk Contribution (0-100)',
+                        data: values,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59,130,246,0.25)',
+                        fill: true,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 100,
+                            angleLines: { color: 'rgba(59,130,246,0.18)' },
+                            grid: { color: 'rgba(59,130,246,0.18)' },
+                            pointLabels: { color: '#d6e3ff' },
+                            ticks: {
+                                color: '#d6e3ff',
+                                backdropColor: 'rgba(6,15,56,0.8)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#d6e3ff' } }
+                    }
+                }
+            });
+        }
+
+        function normalizeState(state) {
+            const map = {
+                0: "Calm",
+                1: "Stressed",
+                2: "Angry",
+                3: "Impulsive"
+            };
+
+            if (state === null || state === undefined) return "Unknown";
+            if (typeof state === "number") return map[state] || String(state);
+
+            const asText = String(state).trim();
+            if (/^\d+$/.test(asText)) return map[Number(asText)] || asText;
+            return asText;
+        }
+
+        function displayState(state) {
+            const readableState = normalizeState(state);
+            document.getElementById('stateTitle').innerText = `Predicted State: ${readableState}`;
+        }
+
+        function displayAdvice(advice, risk) {
+            const box = document.getElementById('adviceBox');
+            let emoji = "😐";
+            if (risk < 30) emoji = "😃";
+            else if (risk > 70) emoji = "😞";
+
+            box.innerHTML = `${advice} <span class="emoji">${emoji}</span>`;
+        }
+
+        fetchPrediction();
+    </script>
+</body>
+</html>

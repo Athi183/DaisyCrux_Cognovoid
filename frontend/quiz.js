@@ -66,52 +66,11 @@ function finishQuiz() {
   document.querySelector(".quiz-container").innerHTML = `
     <h2>Quiz Completed ✅</h2>
     <p>Your mental data has been recorded.</p>
-    <button onclick="sendToBackend()">Analyze Your State</button>
+    <button onclick="goToResults()">See Dashboard</button>
   `;
 }
 
-// Map frontend keys to XGBoost model features and send to backend
-function sendToBackend() {
-  const mappedData = {
-    Work_Hours_Per_Week: Number(userData.workHours || 0),
-    Social_Media_Hours_Day: Number(userData.screen || 0),
-    Work_Stress_Level: Number(userData.stress || 0),
-    Sleep_Hours_Night: Number(userData.sleep || 0),
-    Screen_Time_Hours_Day: Number(userData.screen || 0),
-    Loneliness: Number(userData.loneliness || 0),
-    Social_Support: Number(userData.socialSupport || 0)
-  };
-
-  fetch("http://localhost:5000/predict", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(mappedData)
-  })
-  .then(res => res.json())
-  .then(data => {
-    // Handle backend errors
-    if(data.error){
-      document.querySelector(".quiz-container").innerHTML = `
-        <h2>Error ❌</h2>
-        <p>${data.error}</p>
-        <button onclick="location.reload()">Try Again</button>
-      `;
-      console.error("Backend Error:", data.error);
-      return;
-    }
-
-    document.querySelector(".quiz-container").innerHTML = `
-      <h2>Result: ${data.state || "Unknown"} ✅</h2>
-      <p>${data.message || "No message returned."}</p>
-      <button onclick="location.reload()">Try Again</button>
-    `;
-  })
-  .catch(err => {
-    document.querySelector(".quiz-container").innerHTML = `
-      <h2>Network Error ❌</h2>
-      <p>Could not reach backend.</p>
-      <button onclick="location.reload()">Try Again</button>
-    `;
-    console.error("Fetch Error:", err);
-  });
+function goToResults() {
+  localStorage.setItem("cognovoidQuizData", JSON.stringify(userData));
+  window.location.href = "result.html";
 }

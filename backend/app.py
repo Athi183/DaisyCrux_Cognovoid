@@ -10,32 +10,63 @@ CORS(app)  # Allow requests from all origins
 model = pickle.load(open("model.pkl", "rb"))
 le = pickle.load(open("label_encoder.pkl", "rb"))
 
+FEATURES = [
+    "Work_Hours_Per_Week",
+    "Social_Media_Hours_Day",
+    "Work_Stress_Level",
+    "Sleep_Hours_Night",
+    "Screen_Time_Hours_Day",
+    "Loneliness",
+    "Social_Support",
+]
+
+FEATURE_RANGES = {
+    "Work_Hours_Per_Week": (0, 80),
+    "Social_Media_Hours_Day": (0, 12),
+    "Work_Stress_Level": (0, 5),
+    "Sleep_Hours_Night": (0, 10),
+    "Screen_Time_Hours_Day": (0, 12),
+    "Loneliness": (0, 5),
+    "Social_Support": (0, 5),
+}
+
+POSITIVE_FEATURES = {"Sleep_Hours_Night", "Social_Support"}
+
+
+def _to_float(data, *keys):
+    for key in keys:
+        if key in data and data[key] is not None:
+            return float(data[key])
+    return 0.0
+
+
+def _scaled(value, min_val, max_val, invert=False):
+    if max_val <= min_val:
+        return 0
+    clamped = max(min_val, min(max_val, value))
+    scaled = ((clamped - min_val) / (max_val - min_val)) * 100.0
+    if invert:
+        scaled = 100.0 - scaled
+    return int(round(scaled))
+
 @app.route("/predict", methods=["POST"])
 def predict():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     print("Received JSON:", data)
 
-    # Mapping frontend quiz keys to model features
+    # Accepts either raw quiz keys or already mapped feature keys
     mapped_data = {
-        "Work_Hours_Per_Week": float(data.get("workHours", 0)),
-        "Social_Media_Hours_Day": float(data.get("screen", 0)),
-        "Work_Stress_Level": float(data.get("stress", 0)),
-        "Sleep_Hours_Night": float(data.get("sleep", 0)),
-        "Screen_Time_Hours_Day": float(data.get("screen", 0)),  # same as Social_Media_Hours_Day
-        "Loneliness": float(data.get("loneliness", 0)),
-        "Social_Support": float(data.get("socialSupport", 0))
+        "Work_Hours_Per_Week": _to_float(data, "workHours", "Work_Hours_Per_Week"),
+        "Social_Media_Hours_Day": _to_float(data, "screen", "Social_Media_Hours_Day"),
+        "Work_Stress_Level": _to_float(data, "stress", "Work_Stress_Level"),
+        "Sleep_Hours_Night": _to_float(data, "sleep", "Sleep_Hours_Night"),
+        "Screen_Time_Hours_Day": _to_float(data, "screen", "Screen_Time_Hours_Day"),
+        "Loneliness": _to_float(data, "loneliness", "Loneliness"),
+        "Social_Support": _to_float(data, "socialSupport", "Social_Support"),
     }
 
     # Convert to NumPy array
-    features = np.array([[
-        mapped_data["Work_Hours_Per_Week"],
-        mapped_data["Social_Media_Hours_Day"],
-        mapped_data["Work_Stress_Level"],
-        mapped_data["Sleep_Hours_Night"],
-        mapped_data["Screen_Time_Hours_Day"],
-        mapped_data["Loneliness"],
-        mapped_data["Social_Support"]
-    ]])
+    features = np.array([[mapped_data[name] for name in FEATURES]])
 
     try:
         # Predict
@@ -55,10 +86,39 @@ def predict():
             "Impulsive": "Your responses show impulsivity. Pause before acting. ⏸️"
         }
 
-        # Return JSON with only native Python types
+        risk_by_state = {"Calm": 20, "Stressed": 72, "Angry": 86, "Impulsive": 78}
+        base_risk = risk_by_state.get(mental_state, 50)
+
+        feature_scores = {}
+        for feature_name in FEATURES:
+            min_val, max_val = FEATURE_RANGES[feature_name]
+            feature_scores[feature_name] = _scaled(
+                mapped_data[feature_name],
+                min_val,
+                max_val,
+                invert=(feature_name in POSITIVE_FEATURES),
+            )
+
+        risk_score = int(round(sum(feature_scores.values()) / len(feature_scores)))
+        risk_score = int(round((risk_score + base_risk) / 2))
+
+        if hasattr(model, "predict_proba"):
+            probabilities = model.predict_proba(features)[0]
+            class_labels = le.inverse_transform(np.arange(len(probabilities)))
+            proba_by_state = {
+                str(class_labels[idx]): float(probabilities[idx])
+                for idx in range(len(probabilities))
+            }
+        else:
+            proba_by_state = {}
+
         return jsonify({
             "state": mental_state,
-            "message": messages.get(mental_state, "Be mindful of your mental state.")
+            "message": messages.get(mental_state, "Be mindful of your mental state."),
+            "risk_score": risk_score,
+            "inputs": mapped_data,
+            "feature_scores": feature_scores,
+            "state_probabilities": proba_by_state,
         })
 
     except Exception as e:
