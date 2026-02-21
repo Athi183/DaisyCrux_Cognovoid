@@ -33,7 +33,6 @@ FEATURE_RANGES = {
 
 POSITIVE_FEATURES = {"sleep", "mood", "focus"}
 
-
 # ========================
 # Utility functions
 # ========================
@@ -67,65 +66,6 @@ def get_mental_state(score):
 
 
 # ========================
-# Prediction Route
-# ========================
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({
-        "status": "Cognovoid backend running 🚀",
-        "routes": ["/predict (POST)", "/chat (POST)"]
-    })
-@app.route("/predict", methods=["POST"])
-def predict():
-    data = request.get_json(silent=True) or {}
-
-    feature_values = []
-    missing = []
-
-    for feat in MODEL_FEATURES:
-        if feat not in data:
-            missing.append(feat)
-        feature_values.append(_get_float(data, feat, 0.0))
-
-    features_array = np.array([feature_values], dtype=float)
-
-    try:
-        prediction = model.predict(features_array)
-        score = float(prediction[0])
-
-        mental_state = get_mental_state(score)
-        risk_score = int(max(0, min(100, score)))
-
-        feature_scores = {}
-        for feat in MODEL_FEATURES:
-            min_val, max_val = FEATURE_RANGES.get(feat, (0, 10))
-            feature_scores[feat] = _scaled(
-                data.get(feat, 0),
-                min_val,
-                max_val,
-                invert=(feat in POSITIVE_FEATURES),
-            )
-
-        messages = {
-            "Calm": "Balanced mental state detected. Decision clarity is stable.",
-            "Stressed": "Some stress detected. Short breaks can improve clarity.",
-            "Angry": "High emotional activation detected. Delay major decisions.",
-            "Impulsive": "Low inhibition detected. Pause before acting.",
-        }
-
-        return jsonify({
-            "state": mental_state,
-            "risk_score": risk_score,
-            "feature_scores": feature_scores,
-            "message": messages.get(mental_state),
-            "missing_features": missing
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# ========================
 # Groq Chatbot
 # ========================
 
@@ -143,6 +83,7 @@ If user wants to share story:
 Always respond in chat style.
 Small paragraphs only.
 """
+
 
 def get_groq_client():
     api_key = os.getenv("GROQ_API_KEY")
@@ -165,19 +106,95 @@ def generate_cognovoid_reply(user_message):
     return response.choices[0].message.content
 
 
-@app.route("/chat", methods=["POST"])
-def chat():
+# ========================
+# Single Main Route
+# ========================
+
+@app.route("/", methods=["GET", "POST"])
+def main_route():
+
+    # ---------- GET = Health check ----------
+    if request.method == "GET":
+        return jsonify({
+            "status": "Cognovoid backend running 🚀",
+            "usage": {
+                "predict": "POST with action='predict' and feature data",
+                "chat": "POST with action='chat' and message"
+            }
+        })
+
+    # ---------- POST ----------
     data = request.get_json(silent=True) or {}
-    user_message = str(data.get("message", "")).strip()
+    action = data.get("action")
 
-    if not user_message:
-        return jsonify({"error": "message is required"}), 400
+    # ===== Prediction =====
+    if action == "predict":
 
-    try:
-        reply = generate_cognovoid_reply(user_message)
-        return jsonify({"reply": reply})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        feature_values = []
+        missing = []
+
+        for feat in MODEL_FEATURES:
+            if feat not in data:
+                missing.append(feat)
+            feature_values.append(_get_float(data, feat, 0.0))
+
+        features_array = np.array([feature_values], dtype=float)
+
+        try:
+            prediction = model.predict(features_array)
+            score = float(prediction[0])
+
+            mental_state = get_mental_state(score)
+            risk_score = int(max(0, min(100, score)))
+
+            feature_scores = {}
+            for feat in MODEL_FEATURES:
+                min_val, max_val = FEATURE_RANGES.get(feat, (0, 10))
+                feature_scores[feat] = _scaled(
+                    data.get(feat, 0),
+                    min_val,
+                    max_val,
+                    invert=(feat in POSITIVE_FEATURES),
+                )
+
+            messages = {
+                "Calm": "Balanced mental state detected. Decision clarity is stable.",
+                "Stressed": "Some stress detected. Short breaks can improve clarity.",
+                "Angry": "High emotional activation detected. Delay major decisions.",
+                "Impulsive": "Low inhibition detected. Pause before acting.",
+            }
+
+            return jsonify({
+                "state": mental_state,
+                "risk_score": risk_score,
+                "feature_scores": feature_scores,
+                "message": messages.get(mental_state),
+                "missing_features": missing
+            })
+
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+
+    # ===== Chat =====
+    elif action == "chat":
+        user_message = str(data.get("message", "")).strip()
+
+        if not user_message:
+            return jsonify({"error": "message is required"}), 400
+
+        try:
+            reply = generate_cognovoid_reply(user_message)
+            return jsonify({"reply": reply})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+
+    # ===== Invalid action =====
+    else:
+        return jsonify({
+            "error": "Invalid action. Use 'predict' or 'chat'."
+        }), 400
 
 
 # ========================
