@@ -69,7 +69,12 @@ def get_mental_state(score):
 # ========================
 # Prediction Route
 # ========================
-
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "status": "Cognovoid backend running 🚀",
+        "routes": ["/predict (POST)", "/chat (POST)"]
+    })
 @app.route("/predict", methods=["POST"])
 def predict():
     data = request.get_json(silent=True) or {}
@@ -174,12 +179,7 @@ def chat():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({
-        "status": "Cognovoid backend running 🚀",
-        "available_routes": ["/predict", "/chat"]
-    })
+
 # ========================
 # DO NOT use app.run() on Render
 # ========================
