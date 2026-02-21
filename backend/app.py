@@ -2,14 +2,36 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pickle
 import pandas as pd
+import os
+from dotenv import load_dotenv
+from groq import Groq
 
 app = Flask(__name__)
 CORS(app)
+load_dotenv()
 
 model = pickle.load(open("regression_model.pkl", "rb"))
 meta = pickle.load(open("regression_meta.pkl", "rb"))
 MODEL_FEATURES = meta["features"]
 FEATURE_COLUMNS = meta["feature_columns"]
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+CHAT_PROMPT = """
+You are Cognovoid — a calm rational companion.
+
+If user sounds anxious:
+- First reduce stress.
+- Keep sentences short.
+- Use gentle tone.
+- Then guide logically.
+
+If user wants to share story:
+- Be warm and conversational.
+
+Always respond in chat style.
+Use small paragraphs.
+Do not write long essays.
+"""
 
 FEATURE_RANGES = {
     "sleep_hours": (0, 12),
@@ -128,6 +150,29 @@ def predict():
         })
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.get_json(silent=True) or {}
+    user_message = str(data.get("message", "")).strip()
+    if not user_message:
+        return jsonify({"error": "message is required"}), 400
+    if groq_client is None:
+        return jsonify({"error": "GROQ_API_KEY is not configured on the backend."}), 500
+    try:
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": CHAT_PROMPT},
+                {"role": "user", "content": user_message},
+            ],
+            temperature=0.6,
+        )
+        reply = response.choices[0].message.content
+        return jsonify({"reply": reply})
+    except Exception as exc:
+        return jsonify({"error": f"chat request failed: {exc}"}), 500
 
 
 if __name__ == "__main__":

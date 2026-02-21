@@ -30,7 +30,7 @@ async function sendMessage() {
     chatBox.appendChild(loading);
 
     try {
-        const response = await fetch("http://localhost:3000/chat", {
+        const response = await fetch("http://localhost:5000/chat", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -57,8 +57,11 @@ async function sendMessage() {
 }
 
 function goToLevel2() {
-    window.location.href = "quiz.html";
+    const quizUrl = new URL("quiz.html", window.location.href).href;
+    window.location.assign(quizUrl);
 }
+document.getElementById("sendBtn").addEventListener("click", sendMessage);
+document.getElementById("level2Btn").addEventListener("click", goToLevel2);
 document.getElementById("messageInput")
 .addEventListener("keydown", function (e) {
     if (e.key === "Enter" && !e.shiftKey) {
