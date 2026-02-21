@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cognovoid – Decision Advisor</title>
+    <link rel="stylesheet" href="chat.css">
+</head>
+<body>
+
+<div class="container">
+
+    <h1>COGNOVOID</h1>
+    <p class="subtitle">Think Clearly. Decide Smartly.</p>
+
+    <div class="chat-box" id="chatBox"></div>
+    <div class="controls">
+        <textarea id="messageInput" rows="24" placeholder="Describe your situation..."></textarea>
+        <button onclick="sendMessage()">Enter</button>
+        <button id="level2Btn" class="level2-btn hidden" onclick="goToLevel2()">Go To Level 2 Quiz</button>
+    </div>
+
+</div>
+
+<script src="chat.js"></script>
+</body>
+</html>
